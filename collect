@@ -1,0 +1,61 @@
+#!/bin/sh
+# $Id: collect,v 1.2 2010/10/05 08:48:17 micro Exp $
+# script to get data for all instruments
+
+date=$(date '+%d%m%Y')
+
+file='instruments'
+elinks_cmd='elinks'
+elinks_opts='-dump -dump-width 160 -verbose 2'
+lynx_cmd='lynx'
+lynx_opts='-dump'
+url='http://www.commoditycharts.com/quote.asp?mode=d&sym'
+post="grep -v http | awk '{print \$3, \$9}' | sort -rnk2"
+email='rprimus@gmail.com'
+subject="roll-over: ${date}"
+codes='[FGHJKMNQUVXZ]'
+
+
+function get_contract {
+  #echo $1 | awk -F',' '{print "'"$1"'"}'
+  echo $1 | awk -F, '{print $1}'
+}
+
+function get_rolls {
+  tail -1 data/* | egrep -we roll_over
+}
+
+cd ${HOME}/erlang/roll-over
+
+for i in $(cat ${file})
+do
+  roll_over=''
+  inst_url="${url}=${i}"
+  #cmd="${elinks_cmd} ${elinks_opts} ${inst_url}"
+  #cmd="${lynx_cmd} ${lynx_opts} ${inst_url}"
+  #echo "cmd: ${cmd}"
+  #output=$(${cmd})
+  #current=$(echo $output | grep -i ${i} | ${post} | head -1)
+  #echo $current
+  #echo "$date: $current" >> data/$i
+  last_line=$(tail -1 data/${i} | cut -d, -f2)
+  #echo "ll: $last_line"
+  prev_contract=$(get_contract ${last_line})
+  #echo "prev_c: $prev_contract"
+  curr=$(${elinks_cmd} ${elinks_opts} ${inst_url} | egrep -ie "${i}${codes}" |
+  grep -v http | awk '{printf "%s,%d,%d,%f\n", $3, $9, $10, $4}' | sort -t, -rnk2 | head -1)
+  #echo "curr: $curr"
+  curr_contract=$(get_contract ${curr})
+  #echo "curr_c: $curr_contract"
+  if [ X"${prev_contract}" != X"${curr_contract}" ]; then
+    roll_over='roll_over'
+  fi
+  #echo "${date}:,${curr},${roll_over}" 
+  echo "${date}:,${curr},${roll_over}" 2>&1 | tee -a data/${i}
+done
+
+num_rolls=$(get_rolls | wc -l)
+if [ ${num_rolls} -gt 0 ]; then
+  get_rolls | mutt  -s "${subject} $(date)" -- ${email}
+fi
+

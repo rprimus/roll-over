@@ -1,0 +1,133 @@
+head	1.2;
+access;
+symbols;
+locks
+	micro:1.2; strict;
+comment	@# @;
+
+
+1.2
+date	2010.10.05.08.48.17;	author micro;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2010.10.04.02.32.28;	author micro;	state Exp;
+branches;
+next	;
+
+
+desc
+@first check-in
+ready for 1st test in cron later on this evening.
+-primus
+@
+
+
+1.2
+log
+@changed rolls to num_rolls
+instruments-test -> instruments
+-primus
+@
+text
+@#!/bin/sh
+# $Id$
+# script to get data for all instruments
+
+date=`date "+%d%m%Y"`
+
+file="instruments"
+elinks_cmd="elinks"
+elinks_opts="-dump -dump-width 160 -verbose 2"
+lynx_cmd="lynx"
+lynx_opts="-dump"
+url="http://www.commoditycharts.com/quote.asp?mode=d&sym"
+post="grep -v http | awk '{print \$3, \$9}' | sort -rnk2"
+email='rprimus@@gmail.com'
+subject="roll-over: ${date}"
+codes='[FGHJKMNQUVXZ]'
+
+
+function get_contract {
+  #echo $1 | awk -F',' '{print "'"$1"'"}'
+  echo $1 | awk -F, '{print $1}'
+}
+
+function get_rolls {
+  tail -1 data/* | egrep -we roll_over
+}
+
+for i in `cat ${file}`
+do
+  roll_over=""
+  inst_url="${url}=${i}"
+  #cmd="${elinks_cmd} ${elinks_opts} ${inst_url}"
+  #cmd="${lynx_cmd} ${lynx_opts} ${inst_url}"
+  #echo "cmd: ${cmd}"
+  #output="`${cmd}`"
+  #current="`echo $output | grep -i ${i} | ${post} | head -1`"
+  #echo $current
+  #echo "$date: $current" >> data/$i
+  last_line=`tail -1 data/${i} | cut -d, -f2`
+  echo "ll: $last_line"
+  prev_contract=`get_contract ${last_line}`
+  echo "prev_c: $prev_contract"
+  curr=`${elinks_cmd} ${elinks_opts} ${inst_url} | egrep -ie "${i}${codes}" |
+  grep -v http | awk '{printf "%s,%d,%d,%f\n", $3, $9, $10, $4}' | sort -t, -rnk2 | head -1`
+  echo "curr: $curr"
+  curr_contract=`get_contract ${curr}`
+  echo "curr_c: $curr_contract"
+  if [ X"${prev_contract}" != X"${curr_contract}" ]; then
+    roll_over="roll_over"
+  fi
+  #echo "${date}:,${curr},${roll_over}" 
+  echo "${date}:,${curr},${roll_over}" 2>&1 | tee -a data/${i}
+done
+
+num_rolls=`get_rolls | wc -l`
+if [ ${num_rolls} -gt 0 ]; then
+  get_rolls | mutt  -s "${subject} `date`" -- ${email}
+fi
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 1
+d7 1
+d16 1
+d20 2
+a21 1
+  echo $1 | awk '{print "'"$1"'"}'
+d28 1
+a28 1
+for i in `cat instruments-test`
+d39 1
+a39 1
+  last_line=`tail -1 data/$i | cut -d: -f2`
+d41 1
+a41 1
+  prev_contract=`get_contract $last_line`
+d43 2
+a44 1
+  curr=`${elinks_cmd} ${elinks_opts} ${inst_url} | grep -i ${i} | grep -v http | awk '{print $3, $9, $10}' | sort -rnk2 | head -1`
+d46 1
+a46 1
+  curr_contract=`get_contract $curr`
+d48 1
+a48 1
+  if [ X"$prev_contract" != X"$curr_contract" ]; then
+d51 2
+a52 2
+  #echo "${date}: ${curr} ${roll_over}" 
+  echo "${date}: ${curr} ${roll_over}" 2>&1 | tee -a data/$i
+d55 2
+a56 2
+rolls=`get_rolls | wc -l`
+if [ $rolls -gt 0 ]; then
+@
