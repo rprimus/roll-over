@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # $Id: collect,v 1.2 2010/10/05 08:48:17 micro Exp $
 # script to get data for all instruments
 
@@ -20,9 +20,8 @@ function get_contract {
   #echo $1 | awk -F',' '{print "'"$1"'"}'
   echo $1 | awk -F, '{print $1}'
 }
-
 function get_rolls {
-  tail -1 data/* | egrep -we roll_over
+  tail -n1 data/* | egrep -we roll_over
 }
 
 cd ${HOME}/erlang/roll-over
@@ -38,7 +37,7 @@ do
   #current=$(echo $output | grep -i ${i} | ${post} | head -1)
   #echo $current
   #echo "$date: $current" >> data/$i
-  last_line=$(tail -1 data/${i} | cut -d, -f2)
+  last_line=$(tail -n1 data/${i} | cut -d, -f2)
   #echo "ll: $last_line"
   prev_contract=$(get_contract ${last_line})
   #echo "prev_c: $prev_contract"
@@ -50,7 +49,7 @@ do
   if [ X"${prev_contract}" != X"${curr_contract}" ]; then
     roll_over='roll_over'
   fi
-  #echo "${date}:,${curr},${roll_over}" 
+  #echo "${date}:,${curr},${roll_over}"
   echo "${date}:,${curr},${roll_over}" 2>&1 | tee -a data/${i}
 done
 
